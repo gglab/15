@@ -91,6 +91,37 @@ public class Fifteen implements Comparable<Fifteen> {
         }
     }
 
+    public boolean isSolvable(final int[] puzzle) {
+        int parity = 0;
+        int row = 0; 
+        int blankRow = 0;
+
+        for (int i = 0; i < puzzle.length; i++) {
+            if (i % ROWS == 0) { 
+                row++;
+            }
+            if (puzzle[i] == 0) { 
+                blankRow = row; 
+                continue;
+            }
+            for (int j = i + 1; j < puzzle.length; j++) {
+                if (puzzle[i] > puzzle[j] && puzzle[j] != 0) {
+                    parity++;
+                }
+            }
+        }
+
+        if (ROWS % 2 == 0) { 
+            if (blankRow % 2 == 0) { 
+                return parity % 2 == 0;
+            } else { 
+                return parity % 2 != 0;
+            }
+        } else { 
+            return parity % 2 == 0;
+        }
+    }
+
     private int[] getPosition(final int i) {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
@@ -122,24 +153,25 @@ public class Fifteen implements Comparable<Fifteen> {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Fifteen fifteen = new Fifteen(IS_RANDOM);
 //        System.out.println(fifteen);
         if (IS_RANDOM) {
             fifteen.shuffle();
+        }else if(!fifteen.isSolvable(fifteen.parseState())){
+            throw new Exception("Puzzle is not solvable!");
         }
-        System.out.println("Układ do rozwiązania:");
-        System.out.println(fifteen);
-        Fifteen.dfs(fifteen);
-        //fifteen.shuffle();
-        System.out.println("Układ do rozwiązania:");
-        System.out.println(fifteen);
-        Fifteen.bfs(fifteen);
-        //fifteen.shuffle();
-        System.out.println("Układ do rozwiązania:");
+        System.out.println("Puzzle is solvable!");
+        System.out.println("Puzzle to solve:");
         System.out.println(fifteen);
         fifteen.value = fifteen.getValue();
         Fifteen.aStar(fifteen);
+        System.out.println("Puzzle to solve:");
+        System.out.println(fifteen);
+        Fifteen.bfs(fifteen);
+        System.out.println("Puzzle to solve:");
+        System.out.println(fifteen);
+        Fifteen.dfs(fifteen);
 
     }
 
@@ -367,7 +399,7 @@ public class Fifteen implements Comparable<Fifteen> {
 //            System.out.println("cost: " + current.cost);
 //            System.out.println("value: " + current.value);
 //            System.out.println(current);
-            if (current.compareTo(SOLUTION) == 0) {
+            if (current.equals(SOLUTION)) {
                 System.out.println("Solved using A*!");
                 System.out.println("Visited: " + visited.size());
                 System.out.println("Moves to solve: " + queue.size());
