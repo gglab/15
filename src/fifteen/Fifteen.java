@@ -9,10 +9,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Queue;
@@ -41,6 +43,7 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final String FILE_DFS_KEY = "fileToSave_DFS";
     private static final String FILE_ASTAR1_KEY = "fileToSave_A*1";
     private static final String FILE_ASTAR2_KEY = "fileToSave_A*2";
+    private static final String DIRECTION_KEY = "direction";
 
     private static Properties properties = new Properties();
 
@@ -62,6 +65,7 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final int COLS = Integer.parseInt(properties.getProperty(COLS_KEY, "2"));
     private static boolean isManhattan = true;
     private static final String STATE = properties.getProperty(STATE_KEY, "0 1 2 3");
+    private static final List<Move> DIRECTIONS = getDirections(properties.getProperty(DIRECTION_KEY, "GPDL"));
     private static final boolean IS_RANDOM = RANDOM.equals(STATE);
     public static final Fifteen SOLUTION = new Fifteen(true);
 
@@ -399,11 +403,11 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println(sb);
                 return solution;
             }
-            for (int i = 0; i < 4; i++) {
+            for (Move m : DIRECTIONS) {
                 permutation = new Fifteen(current, false);
-                if (permutation.isMoveLegal(Move.getMove(i))) {
-                    permutation.move(Move.getMove(i));
-                    permutation.m = Move.getMove(i);
+                if (permutation.isMoveLegal(m)) {
+                    permutation.move(m);
+                    permutation.m = m;
                     if (!predecessor.containsKey(permutation)) {
                         predecessor.put(permutation, current);
                         stack.push(permutation);
@@ -441,11 +445,11 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println(sb);
                 return solution;
             }
-            for (int i = 0; i < 4; i++) {
+            for (Move m : DIRECTIONS) {
                 permutation = new Fifteen(current, false);
-                if (permutation.isMoveLegal(Move.getMove(i))) {
-                    permutation.move(Move.getMove(i));
-                    permutation.m = Move.getMove(i);
+                if (permutation.isMoveLegal(m)) {
+                    permutation.move(m);
+                    permutation.m = m;
                     if (!predecessor.containsKey(permutation)) {
                         predecessor.put(permutation, current);
                         queue.add(permutation);
@@ -484,11 +488,11 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println(sb);
                 return solution;
             }
-            for (int i = 0; i < 4; i++) {
+            for (Move m : DIRECTIONS) {
                 permutation = new Fifteen(current, true);
-                if (permutation.isMoveLegal(Move.getMove(i))) {
-                    permutation.move(Move.getMove(i));
-                    permutation.m = Move.getMove(i);
+                if (permutation.isMoveLegal(m)) {
+                    permutation.move(m);
+                    permutation.m = m;
                     permutation.cost++;
                     permutation.value = permutation.getValue();
                     if (!predecessor.containsKey(permutation)) {
@@ -518,6 +522,22 @@ public class Fifteen implements Comparable<Fifteen> {
         } catch (IOException ex) {
             Logger.getLogger(Fifteen.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    private static List<Move> getDirections(final String directions) {
+        //System.out.println(directions);
+        List<Move> result = new ArrayList<Move>(4);
+        if (directions.equalsIgnoreCase(RANDOM)) {
+            Random r = new Random(0);
+            for (int i = 0; i < 4; i++) {
+                result.add(Move.getMove(r.nextInt(4)));
+            }
+            return result;
+        }
+        for (int i = 0; i < 4; i++) {
+            result.add(Move.valueOf(directions.substring(i, i + 1)));
+        }
+        return result;
     }
 }
 
