@@ -8,14 +8,15 @@ package fifteen;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
-import java.util.Set;
 import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +36,10 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final String RANDOM = "random";
     private static final String SEPARATOR = "\t";
     private static final String NEWLINE = "\n\r";
+    private static final String FILE_BFS_KEY = "fileToSave_BFS";
+    private static final String FILE_DFS_KEY = "fileToSave_DFS";
+    private static final String FILE_ASTAR_KEY = "fileToSave_A*";
+
     private static Properties properties = new Properties();
 
     static {
@@ -46,6 +51,10 @@ public class Fifteen implements Comparable<Fifteen> {
         }
 
     }
+    private static final File SOLUTION_FILE_BFS = new File(properties.getProperty(FILE_BFS_KEY, "Solution_BFS.txt"));
+    private static final File SOLUTION_FILE_DFS = new File(properties.getProperty(FILE_DFS_KEY, "Solution_DFS.txt"));
+    private static final File SOLUTION_FILE_ASTAR = new File(properties.getProperty(FILE_ASTAR_KEY, "Solution_aStar.txt"));
+
     private static final int ROWS = Integer.parseInt(properties.getProperty(ROWS_KEY, "2"));
     private static final int COLS = Integer.parseInt(properties.getProperty(COLS_KEY, "2"));
     private static final String STATE = properties.getProperty(STATE_KEY, "0 1 2 3");
@@ -93,15 +102,15 @@ public class Fifteen implements Comparable<Fifteen> {
 
     public boolean isSolvable(final int[] puzzle) {
         int parity = 0;
-        int row = 0; 
+        int row = 0;
         int blankRow = 0;
 
         for (int i = 0; i < puzzle.length; i++) {
-            if (i % ROWS == 0) { 
+            if (i % ROWS == 0) {
                 row++;
             }
-            if (puzzle[i] == 0) { 
-                blankRow = row; 
+            if (puzzle[i] == 0) {
+                blankRow = row;
                 continue;
             }
             for (int j = i + 1; j < puzzle.length; j++) {
@@ -111,13 +120,13 @@ public class Fifteen implements Comparable<Fifteen> {
             }
         }
 
-        if (ROWS % 2 == 0) { 
-            if (blankRow % 2 == 0) { 
+        if (COLS % 2 == 0) {
+            if (blankRow % 2 == 0) {
                 return parity % 2 == 0;
-            } else { 
+            } else {
                 return parity % 2 != 0;
             }
-        } else { 
+        } else {
             return parity % 2 == 0;
         }
     }
@@ -158,21 +167,20 @@ public class Fifteen implements Comparable<Fifteen> {
 //        System.out.println(fifteen);
         if (IS_RANDOM) {
             fifteen.shuffle();
-        }else if(!fifteen.isSolvable(fifteen.parseState())){
+        } else if (!fifteen.isSolvable(fifteen.parseState())) {
             throw new Exception("Puzzle is not solvable!");
         }
         System.out.println("Puzzle is solvable!");
         System.out.println("Puzzle to solve:");
         System.out.println(fifteen);
         fifteen.value = fifteen.getValue();
-        Fifteen.aStar(fifteen);
+        saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR);
         System.out.println("Puzzle to solve:");
         System.out.println(fifteen);
-        Fifteen.bfs(fifteen);
+        saveSolution(Fifteen.bfs(fifteen), SOLUTION_FILE_BFS);
         System.out.println("Puzzle to solve:");
         System.out.println(fifteen);
-        Fifteen.dfs(fifteen);
-
+        saveSolution(Fifteen.dfs(fifteen), SOLUTION_FILE_DFS);
     }
 
     private void initBoard() {
@@ -329,26 +337,35 @@ public class Fifteen implements Comparable<Fifteen> {
         }
     }
 
-    public static Fifteen dfs(final Fifteen fifteen) {
+    public static LinkedList<Fifteen> dfs(final Fifteen fifteen) {
+        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
-        Set<Fifteen> visited = new HashSet<Fifteen>();
+        HashMap<Fifteen,Fifteen> predecessor = new HashMap<Fifteen,Fifteen>();
+        predecessor.put(fifteen, null);
         Stack<Fifteen> stack = new Stack<Fifteen>();
         stack.push(fifteen);
         Fifteen current;
         do {
             current = stack.pop();
             if (current.equals(SOLUTION)) {
-                System.out.println("Solved using DFS!");
-                System.out.println("Visited: " + visited.size());
-                System.out.println("Moves to solve: " + stack.size());
+                final long end = System.currentTimeMillis() - startTime;
+                System.out.println("Solved using DFS in " + end + " ms");
+                LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
+                Fifteen prev = current;
+                while(prev != null){
+                    solution.addFirst(prev);
+                    prev = predecessor.get(prev);
+                }
+                System.out.println("Moves to solve: " + solution.size());
                 System.out.println(current);
-                return current;
+                return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, false);
                 if (permutation.isMoveLegal(i)) {
                     permutation.move(i);
-                    if (visited.add(permutation)) {
+                    if (!predecessor.containsKey(permutation)) {
+                        predecessor.put(permutation, current);
                         stack.push(permutation);
                     }
                 }
@@ -357,26 +374,35 @@ public class Fifteen implements Comparable<Fifteen> {
         return null;
     }
 
-    public static Fifteen bfs(final Fifteen fifteen) {
+    public static LinkedList<Fifteen> bfs(final Fifteen fifteen) {
+        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
-        Set<Fifteen> visited = new HashSet<Fifteen>();
+        HashMap<Fifteen,Fifteen> predecessor = new HashMap<Fifteen,Fifteen>();
+        predecessor.put(fifteen, null);
         Queue<Fifteen> queue = new LinkedList<Fifteen>();
         queue.add(fifteen);
         Fifteen current;
         do {
             current = queue.poll();
             if (current.equals(SOLUTION)) {
-                System.out.println("Solved using BFS!");
-                System.out.println("Visited: " + visited.size());
-                System.out.println("Moves to solve: " + queue.size());
+                final long end = System.currentTimeMillis() - startTime;
+                System.out.println("Solved using BFS in " + end + " ms");
+                LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
+                Fifteen prev = current;
+                while(prev != null){
+                    solution.addFirst(prev);
+                    prev = predecessor.get(prev);
+                }
+                System.out.println("Moves to solve: " + solution.size());
                 System.out.println(current);
-                return current;
+                return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, false);
                 if (permutation.isMoveLegal(i)) {
                     permutation.move(i);
-                    if (visited.add(permutation)) {
+                    if (!predecessor.containsKey(permutation)) {
+                        predecessor.put(permutation, current);
                         queue.add(permutation);
                     }
                 }
@@ -385,26 +411,29 @@ public class Fifteen implements Comparable<Fifteen> {
         return null;
     }
 
-    public static Fifteen aStar(Fifteen fifteen) {
+     public static LinkedList<Fifteen> aStar(Fifteen fifteen) {
+        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
-        Set<Fifteen> visited = new HashSet<Fifteen>();
+        HashMap<Fifteen,Fifteen> predecessor = new HashMap<Fifteen,Fifteen>();
+        predecessor.put(fifteen, null);
         PriorityQueue<Fifteen> queue = new PriorityQueue<Fifteen>();
         fifteen.value = fifteen.getValue();
         queue.add(fifteen);
         Fifteen current;
         do {
             current = queue.poll();
-//            System.out.println("Visited: " + visited.size());
-//            System.out.println("Moves to solve: " + queue.size());
-//            System.out.println("cost: " + current.cost);
-//            System.out.println("value: " + current.value);
-//            System.out.println(current);
             if (current.equals(SOLUTION)) {
-                System.out.println("Solved using A*!");
-                System.out.println("Visited: " + visited.size());
-                System.out.println("Moves to solve: " + queue.size());
+                final long end = System.currentTimeMillis() - startTime;
+                System.out.println("Solved using A* in " + end + " ms");
+                LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
+                Fifteen prev = current;
+                while(prev != null){
+                    solution.addFirst(prev);
+                    prev = predecessor.get(prev);
+                }
+                System.out.println("Moves to solve: " + solution.size());
                 System.out.println(current);
-                return current;
+                return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, true);
@@ -412,17 +441,33 @@ public class Fifteen implements Comparable<Fifteen> {
                     permutation.move(i);
                     permutation.cost++;
                     permutation.value = permutation.getValue();
-                    if (visited.add(permutation)) {
+                    if (!predecessor.containsKey(permutation)) {
+                        predecessor.put(permutation, current);
                         queue.add(permutation);
                     }
                 }
             }
         } while (queue.size() > 0);
-        System.out.println("Visited: " + visited.size());
-        System.out.println("Moves to solve: " + queue.size());
-        System.out.println("cost: " + current.cost);
-        System.out.println("value: " + current.value);
-        System.out.println(current);
-        return current;
+        return null;
+    }
+
+    private static void saveSolution(final Iterable collection, final File file) {
+        try {
+            final PrintWriter writer = new PrintWriter(file);
+            for (Iterator<Fifteen> iterator = collection.iterator(); iterator.hasNext();) {
+                Fifteen temp = (Fifteen) iterator.next();
+                for (int i = 0; i < ROWS; i++) {
+                    for (int j = 0; j < COLS; j++) {
+                        writer.print(SEPARATOR);
+                        writer.print(temp.board[i][j]);
+                        writer.print(SEPARATOR);
+                    }
+                }
+                writer.println("----------");
+            }
+            writer.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Fifteen.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }
