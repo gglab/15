@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Stack;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -69,8 +70,10 @@ public class Fifteen implements Comparable<Fifteen> {
     int r;
     int cost = 0;
     int value = 0;
+    Move m;
 
     public Fifteen(final boolean solved) {
+        m = null;
         if (solved || IS_RANDOM) {
             initBoard();
         } else if (!IS_RANDOM) {
@@ -90,6 +93,7 @@ public class Fifteen implements Comparable<Fifteen> {
     }
 
     public Fifteen(final Fifteen fifteen, final boolean isHeuristic) {
+        m = null;
         for (int i = 0; i < ROWS; i++) {
             for (int j = 0; j < COLS; j++) {
                 this.board[i][j] = fifteen.board[i][j];
@@ -198,21 +202,19 @@ public class Fifteen implements Comparable<Fifteen> {
         System.out.println("Puzzle is solvable!");
         System.out.println("Puzzle to solve:");
         System.out.println(fifteen);
+        System.out.println("----------");
         isManhattan = true;
         System.out.println("Manhattan huristic method");
         fifteen.value = fifteen.getValue();
         saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR1);
-        System.out.println("Puzzle to solve:");
-        System.out.println(fifteen);
+        System.out.println("----------");
         isManhattan = false;
         System.out.println("Hamming heuristic method");
         fifteen.value = fifteen.getValue();
         saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR2);
-        System.out.println("Puzzle to solve:");
-        System.out.println(fifteen);
+        System.out.println("----------");
         saveSolution(Fifteen.bfs(fifteen), SOLUTION_FILE_BFS);
-        System.out.println("Puzzle to solve:");
-        System.out.println(fifteen);
+        System.out.println("----------");
         saveSolution(Fifteen.dfs(fifteen), SOLUTION_FILE_DFS);
     }
 
@@ -233,31 +235,31 @@ public class Fifteen implements Comparable<Fifteen> {
         return Stream.of(STATE.split(STATE_SEPARATOR)).mapToInt(Integer::parseInt).toArray();
     }
 
-    boolean move(final int direction) {
+    boolean move(final Move direction) {
         final int x = board[r][c];
         try {
             switch (direction) {
                 //do góry    
-                case 0:
+                case G:
                     board[r][c] = board[r - 1][c];
                     board[r - 1][c] = x;
                     r--;
                     return true;
                 //prawo
-                case 1:
+                case P:
                     board[r][c] = board[r][c + 1];
                     board[r][c + 1] = x;
                     c++;
                     return true;
 
                 //dół
-                case 2:
+                case D:
                     board[r][c] = board[r + 1][c];
                     board[r + 1][c] = x;
                     r++;
                     return true;
                 //lewo
-                case 3:
+                case L:
                     // if (c != 0) {
                     board[r][c] = board[r][c - 1];
                     board[r][c - 1] = x;
@@ -270,28 +272,28 @@ public class Fifteen implements Comparable<Fifteen> {
         return false;
     }
 
-    public boolean isMoveLegal(final int direction) {
+    public boolean isMoveLegal(final Move direction) {
         switch (direction) {
             //do góry    
-            case 0:
+            case G:
                 if (r != 0) {
                     return true;
                 }
                 break;
             //prawo
-            case 1:
+            case P:
                 if (c != COLS - 1) {
                     return true;
                 }
                 break;
             //dół
-            case 2:
+            case D:
                 if (r != ROWS - 1) {
                     return true;
                 }
                 break;
             //lewo
-            case 3:
+            case L:
                 if (c != 0) {
                     return true;
                 }
@@ -305,8 +307,8 @@ public class Fifteen implements Comparable<Fifteen> {
         int move;
         for (int i = 0; i < 100; ++i) {
             move = r.nextInt(4);
-            if (isMoveLegal(move)) {
-                move(r.nextInt(4));
+            if (isMoveLegal(Move.getMove(move))) {
+                move(Move.getMove(move));
             }
         }
     }
@@ -385,18 +387,23 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println("Solved using DFS in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
+                StringBuffer sb = new StringBuffer();
                 while (prev != null) {
                     solution.addFirst(prev);
+                    if (prev.m != null) {
+                        sb.insert(0, prev.m);
+                    }
                     prev = predecessor.get(prev);
                 }
                 System.out.println("Moves to solve: " + solution.size());
-                System.out.println(current);
+                System.out.println(sb);
                 return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, false);
-                if (permutation.isMoveLegal(i)) {
-                    permutation.move(i);
+                if (permutation.isMoveLegal(Move.getMove(i))) {
+                    permutation.move(Move.getMove(i));
+                    permutation.m = Move.getMove(i);
                     if (!predecessor.containsKey(permutation)) {
                         predecessor.put(permutation, current);
                         stack.push(permutation);
@@ -422,18 +429,23 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println("Solved using BFS in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
+                StringBuffer sb = new StringBuffer();
                 while (prev != null) {
                     solution.addFirst(prev);
+                    if (prev.m != null) {
+                        sb.insert(0, prev.m);
+                    }
                     prev = predecessor.get(prev);
                 }
                 System.out.println("Moves to solve: " + solution.size());
-                System.out.println(current);
+                System.out.println(sb);
                 return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, false);
-                if (permutation.isMoveLegal(i)) {
-                    permutation.move(i);
+                if (permutation.isMoveLegal(Move.getMove(i))) {
+                    permutation.move(Move.getMove(i));
+                    permutation.m = Move.getMove(i);
                     if (!predecessor.containsKey(permutation)) {
                         predecessor.put(permutation, current);
                         queue.add(permutation);
@@ -460,18 +472,23 @@ public class Fifteen implements Comparable<Fifteen> {
                 System.out.println("Solved using A* in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
+                StringBuffer sb = new StringBuffer();
                 while (prev != null) {
                     solution.addFirst(prev);
+                    if (prev.m != null) {
+                        sb.insert(0, prev.m);
+                    }
                     prev = predecessor.get(prev);
                 }
                 System.out.println("Moves to solve: " + solution.size());
-                System.out.println(current);
+                System.out.println(sb);
                 return solution;
             }
             for (int i = 0; i < 4; i++) {
                 permutation = new Fifteen(current, true);
-                if (permutation.isMoveLegal(i)) {
-                    permutation.move(i);
+                if (permutation.isMoveLegal(Move.getMove(i))) {
+                    permutation.move(Move.getMove(i));
+                    permutation.m = Move.getMove(i);
                     permutation.cost++;
                     permutation.value = permutation.getValue();
                     if (!predecessor.containsKey(permutation)) {
@@ -501,5 +518,19 @@ public class Fifteen implements Comparable<Fifteen> {
         } catch (IOException ex) {
             Logger.getLogger(Fifteen.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+}
+
+enum Move {
+
+    G(0), P(1), D(2), L(3);
+    private int value;
+
+    private Move(int value) {
+        this.value = value;
+    }
+
+    public static Move getMove(int value) {
+        return Move.values()[value];
     }
 }
