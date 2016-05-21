@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -19,6 +20,7 @@ import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.Stack;
 import java.util.Vector;
 import java.util.logging.Level;
@@ -36,7 +38,7 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final String COLS_KEY = "cols";
     private static final String STATE_KEY = "initial";
     private static final String STATE_SEPARATOR = " ";
-    private static final String RANDOM = "random";
+    private static final String RANDOM = "R";
     private static final String SEPARATOR = "\t";
     private static final String NEWLINE = "\n\r";
     private static final String FILE_BFS_KEY = "fileToSave_BFS";
@@ -44,6 +46,12 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final String FILE_ASTAR1_KEY = "fileToSave_A*1";
     private static final String FILE_ASTAR2_KEY = "fileToSave_A*2";
     private static final String DIRECTION_KEY = "direction";
+    private static final String STRATEGY_D = "-d";
+    private static final String STRATEGY_DFS = "-dfs";
+    private static final String STRATEGY_B = "-b";
+    private static final String STRATEGY_BFS = "-bfs";
+    private static final String STRATEGY_N = "-n";
+    private static final String STRATEGY_NN = "-nn";
 
     private static Properties properties = new Properties();
 
@@ -61,15 +69,54 @@ public class Fifteen implements Comparable<Fifteen> {
     private static final File SOLUTION_FILE_ASTAR1 = new File(properties.getProperty(FILE_ASTAR1_KEY, "Solution_aStarManhattan.txt"));
     private static final File SOLUTION_FILE_ASTAR2 = new File(properties.getProperty(FILE_ASTAR2_KEY, "Solution_aStarHamming.txt"));
 
-    private static final int ROWS = Integer.parseInt(properties.getProperty(ROWS_KEY, "2"));
-    private static final int COLS = Integer.parseInt(properties.getProperty(COLS_KEY, "2"));
+    private static int rows = Integer.parseInt(properties.getProperty(ROWS_KEY, "2"));
+    private static int cols = Integer.parseInt(properties.getProperty(COLS_KEY, "2"));
     private static boolean isManhattan = true;
-    private static final String STATE = properties.getProperty(STATE_KEY, "0 1 2 3");
-    private static final List<Move> DIRECTIONS = getDirections(properties.getProperty(DIRECTION_KEY, "GPDL"));
-    private static final boolean IS_RANDOM = RANDOM.equals(STATE);
+    private static String state = properties.getProperty(STATE_KEY, "0 1 2 3");
+    private static String dir = properties.getProperty(DIRECTION_KEY, "GPDL");
+    private static List<Move> directions = getDirections(dir);
+    private static boolean isRandom = RANDOM.equals(state);
     public static final Fifteen SOLUTION = new Fifteen(true);
+    private static String strategy = "";
+    private static Scanner scanIn = new Scanner(System.in);
 
-    int[][] board = new int[ROWS][COLS];
+    private static void init(String[] args) {
+        strategy = args[0];
+        if (strategy.equalsIgnoreCase(STRATEGY_N) || strategy.equalsIgnoreCase(STRATEGY_NN)) {
+            int id = Integer.parseInt(args[1]);
+            if (id == 1) {
+                isManhattan = true;
+            } else {
+                isManhattan = false;
+            }
+            dir = "GPDL";
+            directions = getDirections(dir);
+        } else {
+            dir = args[1];
+            directions = getDirections(dir);
+        }
+        getDim();
+        readBoard();
+    }
+
+    private static void readBoard() {
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < rows; i++) {
+            sb.append(scanIn.nextLine());
+            sb.append(" ");
+        }
+        state = sb.toString().trim();
+        isRandom = RANDOM.equals(state);
+    }
+
+    private static void getDim() {
+        String dim = scanIn.nextLine();
+        String[] split = dim.split(" ");
+        rows = Integer.parseInt(split[0]);
+        cols = Integer.parseInt(split[1]);
+    }
+
+    int[][] board;
     int c;
     int r;
     int cost = 0;
@@ -77,14 +124,15 @@ public class Fifteen implements Comparable<Fifteen> {
     Move m;
 
     public Fifteen(final boolean solved) {
+        board = new int[rows][cols];
         m = null;
-        if (solved || IS_RANDOM) {
+        if (solved || isRandom) {
             initBoard();
-        } else if (!IS_RANDOM) {
+        } else if (!isRandom) {
             final int[] initialState = parseState();
             int n = 0;
-            for (int i = 0; i < ROWS; i++) {
-                for (int j = 0; j < COLS; j++) {
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
                     board[i][j] = initialState[n];
                     if (initialState[n] == 0) {
                         r = i;
@@ -98,8 +146,9 @@ public class Fifteen implements Comparable<Fifteen> {
 
     public Fifteen(final Fifteen fifteen, final boolean isHeuristic) {
         m = null;
-        for (int i = 0; i < ROWS; i++) {
-            for (int j = 0; j < COLS; j++) {
+        board = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
                 this.board[i][j] = fifteen.board[i][j];
             }
         }
@@ -117,7 +166,7 @@ public class Fifteen implements Comparable<Fifteen> {
         int blankRow = 0;
 
         for (int i = 0; i < puzzle.length; i++) {
-            if (i % ROWS == 0) {
+            if (i % rows == 0) {
                 row++;
             }
             if (puzzle[i] == 0) {
@@ -131,7 +180,7 @@ public class Fifteen implements Comparable<Fifteen> {
             }
         }
 
-        if (COLS % 2 == 0) {
+        if (cols % 2 == 0) {
             if (blankRow % 2 == 0) {
                 return parity % 2 == 0;
             } else {
@@ -143,8 +192,8 @@ public class Fifteen implements Comparable<Fifteen> {
     }
 
     private int[] getPosition(final int i) {
-        for (int row = 0; row < ROWS; row++) {
-            for (int col = 0; col < COLS; col++) {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
                 if (board[row][col] == i) {
                     return new int[]{row, col};
                 }
@@ -163,8 +212,8 @@ public class Fifteen implements Comparable<Fifteen> {
 
     private int getHammingDistance() {
         int i = 0;
-        for (int row = 0; row < ROWS; row++) {
-            for (int col = 0; col < COLS; col++) {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
                 if (board[row][col] != SOLUTION.board[row][col]) {
                     i++;
                 }
@@ -177,9 +226,9 @@ public class Fifteen implements Comparable<Fifteen> {
         int result = 0;
         int i = 1;
         int[] position;
-        for (int row = 0; row < ROWS; row++) {
-            for (int col = 0; col < COLS; col++) {
-                if (i == ROWS * COLS) {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (i == rows * cols) {
                     continue;
                 }
                 position = getPosition(i);
@@ -188,7 +237,7 @@ public class Fifteen implements Comparable<Fifteen> {
             }
         }
         position = getPosition(0);
-        result += Math.abs(ROWS - 1 - position[0]) + Math.abs(COLS - 1 - position[1]);
+        result += Math.abs(rows - 1 - position[0]) + Math.abs(cols - 1 - position[1]);
         return result;
     }
 
@@ -196,47 +245,81 @@ public class Fifteen implements Comparable<Fifteen> {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws Exception {
-        Fifteen fifteen = new Fifteen(IS_RANDOM);
+        if (args.length == 2) {
+            init(args);
+        }
+        Fifteen fifteen = new Fifteen(isRandom);
 //        System.out.println(fifteen);
-        if (IS_RANDOM) {
+        if (isRandom) {
             fifteen.shuffle();
         } else if (!fifteen.isSolvable(fifteen.parseState())) {
-            throw new Exception("Puzzle is not solvable!");
+            System.out.println("-1");
+            System.exit(-1);
         }
-        System.out.println("Puzzle is solvable!");
-        System.out.println("Puzzle to solve:");
-        System.out.println(fifteen);
-        System.out.println("----------");
-        isManhattan = true;
-        System.out.println("Manhattan huristic method");
-        fifteen.value = fifteen.getValue();
-        saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR1);
-        System.out.println("----------");
-        isManhattan = false;
-        System.out.println("Hamming heuristic method");
-        fifteen.value = fifteen.getValue();
-        saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR2);
-        System.out.println("----------");
-        saveSolution(Fifteen.bfs(fifteen), SOLUTION_FILE_BFS);
-        System.out.println("----------");
-        saveSolution(Fifteen.dfs(fifteen), SOLUTION_FILE_DFS);
+        if (!strategy.isEmpty()) {
+            if(strategy.equalsIgnoreCase(STRATEGY_D) || strategy.equalsIgnoreCase(STRATEGY_DFS)){
+                saveSolution(Fifteen.dfs(fifteen), SOLUTION_FILE_DFS);
+            }else if(strategy.equalsIgnoreCase(STRATEGY_B) || strategy.equalsIgnoreCase(STRATEGY_BFS)){
+                saveSolution(Fifteen.bfs(fifteen), SOLUTION_FILE_BFS);
+            }else if(strategy.equalsIgnoreCase(STRATEGY_N) || strategy.equalsIgnoreCase(STRATEGY_NN)){
+                fifteen.value = fifteen.getValue();
+                if(isManhattan){     
+                    saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR1);
+                }else{
+                    saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR2);
+                }
+            }
+        } else {
+            System.out.println("Puzzle to solve:");
+            System.out.println(fifteen);
+            System.out.println("Puzzle is solvable!");
+            System.out.println("Direction: " + dir);
+            System.out.println("----------");
+            isManhattan = true;
+            System.out.println("Manhattan heuristic method");
+            fifteen.value = fifteen.getValue();
+            long startTime = System.currentTimeMillis();
+            saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR1);
+            long end = System.currentTimeMillis() - startTime;
+            System.out.println("Solved in " + end);
+            System.out.println("----------");
+            isManhattan = false;
+            System.out.println("Hamming heuristic method");
+            fifteen.value = fifteen.getValue();
+            startTime = System.currentTimeMillis();
+            saveSolution(Fifteen.aStar(fifteen), SOLUTION_FILE_ASTAR2);
+            end = System.currentTimeMillis() - startTime;
+            System.out.println("Solved in " + end);
+            System.out.println("----------");
+            System.out.println("Solving with BFS");
+            startTime = System.currentTimeMillis();
+            saveSolution(Fifteen.bfs(fifteen), SOLUTION_FILE_BFS);
+            end = System.currentTimeMillis() - startTime;
+            System.out.println("Solved in " + end);
+            System.out.println("----------");
+            System.out.println("Solving with DFS");
+            startTime = System.currentTimeMillis();
+            saveSolution(Fifteen.dfs(fifteen), SOLUTION_FILE_DFS);
+            end = System.currentTimeMillis() - startTime;
+            System.out.println("Solved in " + end);
+        }
     }
 
     private void initBoard() {
         int n = 1;
-        for (int i = 0; i < ROWS; i++) {
-            for (int j = 0; j < COLS; j++) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
                 board[i][j] = n;
                 n++;
             }
         }
-        r = ROWS - 1;
-        c = COLS - 1;
+        r = rows - 1;
+        c = cols - 1;
         board[r][c] = 0;
     }
 
     private int[] parseState() {
-        return Stream.of(STATE.split(STATE_SEPARATOR)).mapToInt(Integer::parseInt).toArray();
+        return Stream.of(state.split(STATE_SEPARATOR)).mapToInt(Integer::parseInt).toArray();
     }
 
     boolean move(final Move direction) {
@@ -286,13 +369,13 @@ public class Fifteen implements Comparable<Fifteen> {
                 break;
             //prawo
             case P:
-                if (c != COLS - 1) {
+                if (c != cols - 1) {
                     return true;
                 }
                 break;
             //dół
             case D:
-                if (r != ROWS - 1) {
+                if (r != rows - 1) {
                     return true;
                 }
                 break;
@@ -320,8 +403,8 @@ public class Fifteen implements Comparable<Fifteen> {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < ROWS; i++) {
-            for (int j = 0; j < COLS; j++) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
                 sb.append(SEPARATOR).append(board[i][j]).append(SEPARATOR);
             }
             sb.append(NEWLINE);
@@ -377,7 +460,6 @@ public class Fifteen implements Comparable<Fifteen> {
     }
 
     public static LinkedList<Fifteen> dfs(final Fifteen fifteen) {
-        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
         HashMap<Fifteen, Fifteen> predecessor = new HashMap<Fifteen, Fifteen>();
         predecessor.put(fifteen, null);
@@ -387,8 +469,6 @@ public class Fifteen implements Comparable<Fifteen> {
         do {
             current = stack.pop();
             if (current.equals(SOLUTION)) {
-                final long end = System.currentTimeMillis() - startTime;
-                System.out.println("Solved using DFS in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
                 StringBuffer sb = new StringBuffer();
@@ -399,11 +479,14 @@ public class Fifteen implements Comparable<Fifteen> {
                     }
                     prev = predecessor.get(prev);
                 }
-                System.out.println("Moves to solve: " + solution.size());
+                System.out.println((solution.size() - 1));
                 System.out.println(sb);
                 return solution;
             }
-            for (Move m : DIRECTIONS) {
+            if (dir.equalsIgnoreCase(RANDOM)) {
+                directions = getDirections(dir);
+            }
+            for (Move m : directions) {
                 permutation = new Fifteen(current, false);
                 if (permutation.isMoveLegal(m)) {
                     permutation.move(m);
@@ -419,7 +502,6 @@ public class Fifteen implements Comparable<Fifteen> {
     }
 
     public static LinkedList<Fifteen> bfs(final Fifteen fifteen) {
-        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
         HashMap<Fifteen, Fifteen> predecessor = new HashMap<Fifteen, Fifteen>();
         predecessor.put(fifteen, null);
@@ -429,8 +511,7 @@ public class Fifteen implements Comparable<Fifteen> {
         do {
             current = queue.poll();
             if (current.equals(SOLUTION)) {
-                final long end = System.currentTimeMillis() - startTime;
-                System.out.println("Solved using BFS in " + end + " ms");
+                //System.out.println("Solved using BFS in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
                 StringBuffer sb = new StringBuffer();
@@ -441,11 +522,14 @@ public class Fifteen implements Comparable<Fifteen> {
                     }
                     prev = predecessor.get(prev);
                 }
-                System.out.println("Moves to solve: " + solution.size());
+                System.out.println((solution.size() - 1));
                 System.out.println(sb);
                 return solution;
             }
-            for (Move m : DIRECTIONS) {
+            if (dir.equalsIgnoreCase(RANDOM)) {
+                directions = getDirections(dir);
+            }
+            for (Move m : directions) {
                 permutation = new Fifteen(current, false);
                 if (permutation.isMoveLegal(m)) {
                     permutation.move(m);
@@ -461,7 +545,6 @@ public class Fifteen implements Comparable<Fifteen> {
     }
 
     public static LinkedList<Fifteen> aStar(Fifteen fifteen) {
-        final long startTime = System.currentTimeMillis();
         Fifteen permutation;
         HashMap<Fifteen, Fifteen> predecessor = new HashMap<Fifteen, Fifteen>();
         predecessor.put(fifteen, null);
@@ -472,8 +555,7 @@ public class Fifteen implements Comparable<Fifteen> {
         do {
             current = queue.poll();
             if (current.equals(SOLUTION)) {
-                final long end = System.currentTimeMillis() - startTime;
-                System.out.println("Solved using A* in " + end + " ms");
+                //System.out.println("Solved using A* in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
                 StringBuffer sb = new StringBuffer();
@@ -484,11 +566,14 @@ public class Fifteen implements Comparable<Fifteen> {
                     }
                     prev = predecessor.get(prev);
                 }
-                System.out.println("Moves to solve: " + solution.size());
+                System.out.println((solution.size() - 1));
                 System.out.println(sb);
                 return solution;
             }
-            for (Move m : DIRECTIONS) {
+            if (dir.equalsIgnoreCase(RANDOM)) {
+                directions = getDirections(dir);
+            }
+            for (Move m : directions) {
                 permutation = new Fifteen(current, true);
                 if (permutation.isMoveLegal(m)) {
                     permutation.move(m);
@@ -510,8 +595,8 @@ public class Fifteen implements Comparable<Fifteen> {
             final PrintWriter writer = new PrintWriter(file);
             for (Iterator<Fifteen> iterator = collection.iterator(); iterator.hasNext();) {
                 Fifteen temp = (Fifteen) iterator.next();
-                for (int i = 0; i < ROWS; i++) {
-                    for (int j = 0; j < COLS; j++) {
+                for (int i = 0; i < rows; i++) {
+                    for (int j = 0; j < cols; j++) {
                         writer.print(SEPARATOR + temp.board[i][j] + SEPARATOR);
                     }
                     writer.println();
@@ -519,7 +604,7 @@ public class Fifteen implements Comparable<Fifteen> {
                 writer.println("--------------------------------------------------");
             }
             writer.close();
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             Logger.getLogger(Fifteen.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -528,15 +613,16 @@ public class Fifteen implements Comparable<Fifteen> {
         //System.out.println(directions);
         List<Move> result = new ArrayList<Move>(4);
         if (directions.equalsIgnoreCase(RANDOM)) {
-            Random r = new Random(0);
             for (int i = 0; i < 4; i++) {
-                result.add(Move.getMove(r.nextInt(4)));
+                result.add(Move.getMove(i));
             }
-            return result;
+            Collections.shuffle(result);
+        } else {
+            for (int i = 0; i < 4; i++) {
+                result.add(Move.valueOf(directions.substring(i, i + 1)));
+            }
         }
-        for (int i = 0; i < 4; i++) {
-            result.add(Move.valueOf(directions.substring(i, i + 1)));
-        }
+
         return result;
     }
 }
