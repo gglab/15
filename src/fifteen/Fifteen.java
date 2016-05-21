@@ -76,7 +76,7 @@ public class Fifteen implements Comparable<Fifteen> {
     private static String dir = properties.getProperty(DIRECTION_KEY, "GPDL");
     private static List<Move> directions = getDirections(dir);
     private static boolean isRandom = RANDOM.equals(state);
-    public static final Fifteen SOLUTION = new Fifteen(true);
+    public static Fifteen solution;
     private static String strategy = "";
     private static Scanner scanIn = new Scanner(System.in);
 
@@ -103,7 +103,7 @@ public class Fifteen implements Comparable<Fifteen> {
         StringBuffer sb = new StringBuffer();
         for (int i = 0; i < rows; i++) {
             sb.append(scanIn.nextLine());
-            sb.append(" ");
+            sb.append(STATE_SEPARATOR);
         }
         state = sb.toString().trim();
         isRandom = RANDOM.equals(state);
@@ -111,7 +111,7 @@ public class Fifteen implements Comparable<Fifteen> {
 
     private static void getDim() {
         String dim = scanIn.nextLine();
-        String[] split = dim.split(" ");
+        String[] split = dim.split(STATE_SEPARATOR);
         rows = Integer.parseInt(split[0]);
         cols = Integer.parseInt(split[1]);
     }
@@ -214,7 +214,7 @@ public class Fifteen implements Comparable<Fifteen> {
         int i = 0;
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                if (board[row][col] != SOLUTION.board[row][col]) {
+                if (board[row][col] != solution.board[row][col]) {
                     i++;
                 }
             }
@@ -248,6 +248,7 @@ public class Fifteen implements Comparable<Fifteen> {
         if (args.length == 2) {
             init(args);
         }
+        solution = new Fifteen(true);
         Fifteen fifteen = new Fifteen(isRandom);
 //        System.out.println(fifteen);
         if (isRandom) {
@@ -424,13 +425,16 @@ public class Fifteen implements Comparable<Fifteen> {
             return false;
         }
         Fifteen temp = (Fifteen) obj;
-        if (!Arrays.deepEquals(board, temp.board)) {
+
+        if(!Arrays.deepEquals(board, temp.board)){
             return false;
         }
         if (c != temp.c) {
+            System.out.println("c");
             return false;
         }
         if (r != temp.r) {
+            System.out.println("r");
             return false;
         }
         return true;
@@ -468,7 +472,7 @@ public class Fifteen implements Comparable<Fifteen> {
         Fifteen current;
         do {
             current = stack.pop();
-            if (current.equals(SOLUTION)) {
+            if (current.equals(solution)) {
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
                 StringBuffer sb = new StringBuffer();
@@ -510,7 +514,7 @@ public class Fifteen implements Comparable<Fifteen> {
         Fifteen current;
         do {
             current = queue.poll();
-            if (current.equals(SOLUTION)) {
+            if (current.equals(solution)) {
                 //System.out.println("Solved using BFS in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
@@ -554,7 +558,7 @@ public class Fifteen implements Comparable<Fifteen> {
         Fifteen current;
         do {
             current = queue.poll();
-            if (current.equals(SOLUTION)) {
+            if (current.equals(solution)) {
                 //System.out.println("Solved using A* in " + end + " ms");
                 LinkedList<Fifteen> solution = new LinkedList<Fifteen>();
                 Fifteen prev = current;
@@ -576,6 +580,7 @@ public class Fifteen implements Comparable<Fifteen> {
             for (Move m : directions) {
                 permutation = new Fifteen(current, true);
                 if (permutation.isMoveLegal(m)) {
+                    
                     permutation.move(m);
                     permutation.m = m;
                     permutation.cost++;
